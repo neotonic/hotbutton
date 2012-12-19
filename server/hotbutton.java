@@ -49,6 +49,9 @@ public class hotbutton
 			{
 				// fetch a key
 				SelectionKey key = (SelectionKey)iterator.next();
+				iterator.remove();
+				if (!key.isValid())
+					continue;
 				
 				// new client connected
 				if (key == serverkey && key.isAcceptable())
@@ -80,13 +83,17 @@ public class hotbutton
 					buffer.clear();
 					//System.out.println("--------------------");
 				}
-				
-				
-				// remove it
-				iterator.remove();
 			}
 		}
-
+		
+	}
+	
+	/**
+	 * bufferReady
+	 */
+	static boolean bufferReady()
+	{
+		return false;
 	}
 }
 
