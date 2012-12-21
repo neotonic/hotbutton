@@ -39,10 +39,7 @@ import android.app.Activity;
 
 public class jsonClient extends AsyncTask<String, String, String> {
 
-	/*
-	static String url = "131.234.254.40";
-	static Integer port = 31337;
-	*/
+
 	static String url = "131.234.254.41";
 	static Integer port = 8080;
 	
