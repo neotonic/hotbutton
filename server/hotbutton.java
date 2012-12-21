@@ -3,6 +3,7 @@
  */
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
@@ -15,6 +16,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.channels.ClosedChannelException;
+
+import java.net.URI;
 
 import java.util.Iterator;
 import java.util.List;
@@ -41,12 +45,39 @@ class AdminInterface implements HttpHandler
 		responseHeaders.set("Content-Type", "text/html");
 		exchange.sendResponseHeaders(200, 0);
 		
-		// send body
+		// preparation of html body
 		OutputStream responseBody = exchange.getResponseBody();
 		OutputStreamWriter out = new OutputStreamWriter(responseBody);
 		
 		// write header
 		writeHeader(out);
+		
+		// uri
+		URI requestedUri = exchange.getRequestURI();
+		String path = requestedUri.getPath();
+		
+		// unlock or lock
+		if(path.startsWith("/unlock") || path.startsWith("/lock")) {
+			// fill buffer with data
+			ByteBuffer byteBuffer = ByteBuffer.allocate(512);
+			CharBuffer charBufer = byteBuffer.asCharBuffer();
+			if(path.startsWith("/unlock"))
+				charBufer.put("unlock\r\n");
+			else
+				charBufer.put("lock\r\n");
+			
+			// send buffer to all users
+			Set<SelectionKey> allKeys = hotbutton.selector.keys();
+			for(SelectionKey key : allKeys)
+			{
+				if(key == hotbutton.serverkey)
+					continue;
+			
+				SocketChannel client = (SocketChannel)key.channel();
+				charBufer.flip();
+				client.write(byteBuffer);
+			}
+		}
 		
 		// get status of all clients
 		Set<SelectionKey> allKeys = hotbutton.selector.keys();
@@ -57,7 +88,7 @@ class AdminInterface implements HttpHandler
 				
 			String username = (String)key.attachment();
 			SocketChannel client = (SocketChannel)key.channel();
-			out.write("<li>" + username + " [" + client.socket().getRemoteSocketAddress() + "]</li>");
+			out.write("<li>" + username + " [" + client.socket().getRemoteSocketAddress() + "] <a class=\"small awesome red\">kick</a></li>");
 		}
 		
 		// write footer and end
@@ -73,17 +104,14 @@ class AdminInterface implements HttpHandler
 	{
 		out.write("<html>" +
 		"<head>" +
-		"<style>" +
-		"hr {color:sienna;}" +
-		"p {margin-left:20px;}" +
-		"h2 { color: rgb(81, 137, 81); font-size: 140%; font-family: arial,helvetica,sans-serif; }" +
-		"body { background-color: rgb(228, 238, 228); }" +
-		"#users { position: absolute; right: 20px; top: 20px; bottom: 20px; padding: 10px; background-color: rgb(216, 228, 216); list-style-image:url('http://www.ticketcreator.com/android16.png'); }" +
-		"#users li { margin-left: 20px; }" +
-		"</style>" +
+		"<link href=css/style.css rel=stylesheet type=text/css>" +
+		"<title>Android Hotbutton Manager</title>" +
 		"</head>" +
 		"<body>" +
-		"<a href=unlock>Unlock</a>" +
+		"<div id=header><h1>Android HotButton Manager</h1></div>" +
+		"<div id=body>" +
+		"<a class=\"large orange awesome\" href=unlock>Unlock all Hotbuttons</a>" +
+		"<a class=\"large green awesome\" href=lock>Lock all Hotbuttons</a>" +
 		"<ul id=users>" +
 		"<h2>Users</h2>");
 	}
@@ -94,44 +122,70 @@ class AdminInterface implements HttpHandler
 	public void writeFooter(OutputStreamWriter out) throws IOException
 	{
 		out.write("</ul>" +
+		"</div>" +
 		"</body>" +
 		"</html>");
 	}
 }
 
 /**
- * lock / unlock button
+ * images handler
  */
-class LockUnlockInerface implements HttpHandler
+class FileController implements HttpHandler
 {
+	private String contentType;
+	private String chroot;
+	
+	/**
+	 * constructor
+	 */
+	FileController(String chroot, String contentType)
+	{
+		this.chroot = chroot;
+		this.contentType = contentType;
+	}
+	
+	/**
+	 * file handler
+	 */
 	public void handle(HttpExchange exchange) throws IOException
 	{
-		// send headers
+		// 
+		URI requestedUri = exchange.getRequestURI();
 		Headers responseHeaders = exchange.getResponseHeaders();
-		responseHeaders.set("Content-Type", "text/html");
-		exchange.sendResponseHeaders(200, 0);
 		
-		
-		ByteBuffer buffer = ByteBuffer.allocate(512);
-		buffer.putChar('u');
-		buffer.putChar('\r');
-		buffer.putChar('\n');
-		
-		Set<SelectionKey> allKeys = hotbutton.selector.keys();
-		for(SelectionKey key : allKeys)
-		{
-			if(key == hotbutton.serverkey)
-				continue;
+		try {
+			// uri extraction
+			String path = requestedUri.getPath();
+			int index = path.lastIndexOf('/');
+			String file = this.chroot + "/" + path.substring(index + 1);
 			
-			SocketChannel client = (SocketChannel)key.channel();
-			buffer.flip();
-			client.write(buffer);
+			// open streams
+			FileInputStream in = new FileInputStream(file);
+			OutputStream out = exchange.getResponseBody();
+			
+			// send headers
+			responseHeaders.set("Content-Type", this.contentType);
+			exchange.sendResponseHeaders(200, 0);
+			
+			// copy contents of in to out
+			byte[] buf = new byte[1024];
+			int len;
+			while ((len = in.read(buf)) > 0) {
+				out.write(buf, 0, len);
+			}
+			in.close();
+			out.close();
+		} catch(Exception ex) {
+			System.out.println(ex.toString());
+			
+			responseHeaders.set("Content-Type", "text/plain");
+			exchange.sendResponseHeaders(404, 0);
+			
+			OutputStream out = exchange.getResponseBody();
+			out.write(ex.toString().getBytes());
+			out.close();
 		}
-		
-		OutputStream responseBody = exchange.getResponseBody();
-		
-		
-		responseBody.close();
 	}
 }
 
@@ -143,6 +197,7 @@ public class hotbutton
 	/**
 	 * all clients
 	 */
+	static ServerSocketChannel server;
 	static SelectionKey serverkey;
 	static Selector selector;
 
@@ -157,23 +212,19 @@ public class hotbutton
 		InetSocketAddress address = new InetSocketAddress(8080);
 		HttpServer httpServer = HttpServer.create(address, 0);
 		AdminInterface admin = new AdminInterface();
-		LockUnlockInerface lockunlock = new LockUnlockInerface();
 		httpServer.createContext("/", admin);
-		httpServer.createContext("/lock", lockunlock);
-		httpServer.createContext("/unlock", lockunlock);
+		httpServer.createContext("/images/", new FileController("./images", "image/png"));
+		httpServer.createContext("/css/", new FileController("./css", "text/css"));
 		httpServer.start();
 		
 		// listen server port 31337
 		InetSocketAddress addrServer = new InetSocketAddress(31337);
-		ServerSocketChannel server = ServerSocketChannel.open();
+		server = ServerSocketChannel.open();
 		selector = Selector.open();
 		server.configureBlocking(false);
 		server.socket().bind(addrServer);
 		serverkey = server.register(selector, SelectionKey.OP_ACCEPT);
 		serverkey.attach("Server");
-		
-		// initialisation stuff
-		ByteBuffer buffer = ByteBuffer.allocate(512); 
 		
 		// main loop
 		System.out.println("Server started...");
@@ -184,43 +235,89 @@ public class hotbutton
 			if(readyChannels < 0)
 				break;
 				
-			// iterate through selection
-			Set<SelectionKey> readyKeys = selector.selectedKeys();
-			Iterator iterator = readyKeys.iterator();
-			while (iterator.hasNext())
+			// call process events
+			processEvents(readyChannels);
+		}
+		
+	}
+	
+	/**
+	 * processCommand
+	 */
+	static List<String> processCommand(SelectionKey key, List<String> request)
+	{
+		List<String> response = new ArrayList<String>();
+
+		// login
+		if(request.get(0).equals("login")) {
+			String username = request.get(1);
+			System.out.println((String)key.attachment() + " changed his username to " + username);
+			key.attach(username);
+			response.add("login");
+			response.add("okay");
+		}
+		
+		// return response
+		return response;
+	}
+	 
+	 /**
+	  * processEvents
+	  */
+	static void processEvents(int eventCount) throws IOException
+	{
+		// initialisation stuff
+		Set<SelectionKey> readyKeys = selector.selectedKeys();
+		Iterator iterator = readyKeys.iterator();
+		ByteBuffer byteBuffer = ByteBuffer.allocate(512);
+		CharBuffer charBuffer = byteBuffer.asCharBuffer();
+			
+		// iterate through selection
+		for(int i = 0; i < eventCount && iterator.hasNext();)
+		{
+			// fetch a key
+			SelectionKey key = (SelectionKey)iterator.next();
+			iterator.remove();
+			if (!key.isValid())
+				continue;
+			
+			// new client connected
+			if (key == serverkey && key.isAcceptable())
 			{
-				// fetch a key
-				SelectionKey key = (SelectionKey)iterator.next();
-				iterator.remove();
-				if (!key.isValid())
-					continue;
-				
-				// new client connected
-				if (key == serverkey && key.isAcceptable())
-				{
-					SocketChannel client = server.accept();
-					client.configureBlocking(false);
-					client.register(selector, SelectionKey.OP_READ);
-					System.out.println("Accepted connection from " + client);
-				}
-				
-				// message from client
-				else if(key.isReadable())
+				SocketChannel client = server.accept();
+				client.configureBlocking(false);
+				client.register(selector, SelectionKey.OP_READ);
+				System.out.println("Accepted connection from " + client);
+			}
+			
+			// message from client
+			else if(key.isReadable())
+			{
+				try
 				{
 					// read data to buffer
 					SocketChannel client = (SocketChannel)key.channel();
-					int bytesread = client.read(buffer);
+					int bytesread = client.read(byteBuffer);
 					if (bytesread == -1) {
 						key.cancel();
 						client.close();
 					}
 					
+					// need a string
+					if(!byteBuffer.hasArray()) {
+						System.out("Ignoring unknown sequeenze from client...\n");
+						continue;
+					}
+					
+					String s = new String(byteBuffer.array());
+					System.out.println(s);
+				
 					// generate request
 					ArrayList<String> command = new ArrayList<String>();
 					StringBuilder s = new StringBuilder();
-					buffer.flip();
-					while(buffer.hasRemaining()) {
-						char c = (char)buffer.get();
+					byteBuffer.flip();
+					while(byteBuffer.hasRemaining()) {
+						char c = (char)byteBuffer.get();
 						if(c == '-') {
 							command.add(s.toString());
 							s = new StringBuilder();
@@ -229,46 +326,33 @@ public class hotbutton
 						}
 					}
 					command.add(s.toString());
-					buffer.clear();
-					
+					byteBuffer.clear();
+				
 					// process Command
-					List<String> response = processCommand(key, command);
-					
-					// send response
-					for(String message : response)
-					{
-						buffer.put(message.getBytes());
-						buffer.putChar('-');
+					List<String> lstResponse = processCommand(key, command);
+					Iterator<String> itResponse = lstResponse.iterator();
+					StringBuilder strResponse = new StringBuilder();
+					while(itResponse.hasNext()) {
+						strResponse.append(itResponse.next());
+						if(itResponse.hasNext())
+							strResponse.append("-");
 					}
-					buffer.putChar('\r');
-					buffer.putChar('\n');
-					buffer.flip();
-					client.write(buffer);
-					buffer.clear();
+					strResponse.append("\r\n");
+				
+					// send response
+					charBuffer.clear();
+					//charBuffer.put("wie auch immer\r\n");
+					charBuffer.put(strResponse.toString());
+					charBuffer.flip();
+					client.write(byteBuffer);
+					byteBuffer.clear();
+				
+					// ClosedChannelException
+				
+				} catch(ClosedChannelException ex) {
+					System.out.println(ex.toString());
 				}
 			}
 		}
-		
 	}
-	
-	/**
-	 * processCommand
-	 */
-	 static List<String> processCommand(SelectionKey key, List<String> request)
-	 {
-		List<String> response = new ArrayList<String>();
-
-		// login
-		if(request.get(0).equals("l")) {
-			String username = request.get(1);
-			key.attach(username);
-			response.add("l");
-			response.add("okay");
-			System.out.println("okay login! >> " + username);
-		}
-		
-		// return response
-		System.out.println(" okay ! --------------------" + request.size());
-		return response;
-	 }
 }
