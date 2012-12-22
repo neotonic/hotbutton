@@ -111,7 +111,7 @@ class AdminInterface implements HttpHandler
 		"<div id=sidebar>" +
 		"<a class=\"large orange awesome\" href=unlock>Unlock all Hotbuttons</a>" +
 		"<a class=\"large green awesome\" href=lock>Lock all Hotbuttons</a>" + 
-		"<a class=\"large magenta awesome\" href=lock>Refresh</a>" +
+		"<a class=\"large magenta awesome\" href=/>Refresh</a>" +
 		"</div>" +
 		"<div id=body>");
 	}
@@ -336,8 +336,9 @@ public class hotbutton
 					}
 					
 					// fetch command from buffer
-					String strCommand = new String(readBuffer.array());
+					String strCommand = new String(readBuffer.array()).trim();
 					List<String> lstCommand = Arrays.asList(strCommand.split("-"));
+					log(strCommand);
 					
 					// process Command
 					List<String> lstResponse = processCommand(key, lstCommand);
@@ -350,8 +351,6 @@ public class hotbutton
 							strResponse.append("-");
 					}
 					strResponse.append("\r\n");
-					
-					System.out.println(strResponse.toString());
 					
 					// send response
 					ByteBuffer writeBuffer = ByteBuffer.wrap(strResponse.toString().getBytes());
