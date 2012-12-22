@@ -11,7 +11,7 @@ import java.net.UnknownHostException;
 
 
 import com.example.hotbutton.R;
-import com.example.hotbutton.jsonClient;
+
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -29,14 +29,14 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 	
 	
-	
+	Boolean loggedIn = false;
 	Socket client;
-	
+	clientLoginAndPlay listener;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
     	
-    	
+    	 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
@@ -45,16 +45,17 @@ public class MainActivity extends Activity {
         final EditText editTextName = (EditText) findViewById(R.id.editTextName);
         Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
         Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
+        Button buttonReady = (Button) findViewById(R.id.buttonReady);
         final EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
         final EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
 
-       
         
-        final clientLoginAndPlay listener = new clientLoginAndPlay();
+        
+        
         
         // disable all widgets
-        //imageViewHotButton.setEnabled(false);
-        //imageViewHotButton.setAlpha(50);
+        imageViewHotButton.setEnabled(false);
+        imageViewHotButton.setAlpha(50);
         
         editTextName.setEnabled(false);
         buttonRegister.setEnabled(false);
@@ -77,10 +78,20 @@ public class MainActivity extends Activity {
 			
 			@Override
 			public void onClick(View v) {
+				
+				listener = new clientLoginAndPlay();
 				listener.execute(editTextName.getText().toString());
 				
 			}
 		});
+        
+        buttonReady.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				
+			}
+        });
         
         // buzz
         imageViewHotButton.setOnClickListener(new OnClickListener() {
@@ -88,11 +99,10 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
             	
             	Toast.makeText(v.getContext(), "buzz", Toast.LENGTH_SHORT).show();
-            	
-            	
-            	
-            	
+      
+            	listener.listening = false;
             	new clientBuzz().execute();
+            	
             	      
             }
         });
@@ -198,14 +208,11 @@ public class MainActivity extends Activity {
     	PrintWriter out;
     	BufferedReader in;
     	
-    	Boolean loginOkay = false;
+    	
     	public Boolean listening = false;
     	
     	protected String doInBackground(String... params) {
 			
-    		String name = params[0];
-    		
-    		Log.d("CLIENT", "Try login as: " + name);
     		
     		listening = true;
     		
@@ -216,8 +223,11 @@ public class MainActivity extends Activity {
 				in = new BufferedReader(new InputStreamReader(client.getInputStream()));
 	    		
 				
-				if(!loginOkay) {
+				if(!loggedIn) {
 					// send loginname to server
+					String name = params[0];
+					
+					Log.d("CLIENT", "Try login as: " + name);
 					out.println("login-" + name);
 				}
 				
@@ -226,14 +236,23 @@ public class MainActivity extends Activity {
 				while(listening)
 				{
 					
-					String line = in.readLine();
+					try {
 					
-					// debug
-					Log.d("SERVER SAYS", line);
+						String line = in.readLine();
+						
+						// debug
+						Log.d("SERVER SAYS", line);
+						
+						publishProgress(line);
 					
-					publishProgress(line);
-					
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						//e.printStackTrace();
+					}
 				}
+				
+				Log.d("clientLoginAndPlay", "Stop listening");
+				
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -242,11 +261,6 @@ public class MainActivity extends Activity {
     		
 					
 			return null;
-		}
-    	
-    	public void stop() {
-			
-    		listening = false;
 		}
 
 		protected void onProgressUpdate(String... status) {
@@ -277,7 +291,7 @@ public class MainActivity extends Activity {
                 imageViewHotButton.setEnabled(false);
                 imageViewHotButton.setAlpha(50);
         		
-                loginOkay = false;
+                loggedIn = false;
         		
         		return;
         	}
@@ -292,12 +306,12 @@ public class MainActivity extends Activity {
         		editTextName.setEnabled(false);
         		buttonRegister.setEnabled(false);
         		
-        		loginOkay = true;
+        		loggedIn = true;
         		
         		return;
         	}
         	
-        	if(status[0].equals("lock") && loginOkay)
+        	if(status[0].equals("lock") && loggedIn)
         	{
                 imageViewHotButton.setEnabled(false);
                 imageViewHotButton.setAlpha(50);	
@@ -305,7 +319,7 @@ public class MainActivity extends Activity {
                 return;
         	}
         	
-        	if(status[0].equals("unlock") && loginOkay)
+        	if(status[0].equals("unlock") && loggedIn)
         	{
                 imageViewHotButton.setEnabled(true);
                 imageViewHotButton.setAlpha(255);
@@ -335,11 +349,14 @@ public class MainActivity extends Activity {
 			}
 			
 			
-			
-			
 			return null;
 		}
-    	
+		protected void onPostExecute (String arg) {
+			
+			listener = new clientLoginAndPlay();
+			listener.execute(((EditText)findViewById(R.id.editTextName)).getText().toString());
+		}
+		
     	
     }
 }

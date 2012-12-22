@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
-            	android:text="131.234.254.40" />
+            	android:text="131.234.254.41" />
 
             <EditText
                 android:id="@+id/editTextPort"
@@ -74,6 +74,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Registrieren" />
+
+            <Button
+                android:id="@+id/buttonReady"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ready" />
 
         </LinearLayout>
 
