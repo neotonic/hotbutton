@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import java.lang.InterruptedException;
 import java.lang.StringBuilder;
@@ -59,12 +60,11 @@ class AdminInterface implements HttpHandler
 		// unlock or lock
 		if(path.startsWith("/unlock") || path.startsWith("/lock")) {
 			// fill buffer with data
-			ByteBuffer byteBuffer = ByteBuffer.allocate(512);
-			CharBuffer charBufer = byteBuffer.asCharBuffer();
+			ByteBuffer buffer;
 			if(path.startsWith("/unlock"))
-				charBufer.put("unlock\r\n");
+				buffer = ByteBuffer.wrap("unlock\r\n".getBytes("US-ASCII"));
 			else
-				charBufer.put("lock\r\n");
+				buffer = ByteBuffer.wrap("lock\r\n".getBytes("US-ASCII"));
 			
 			// send buffer to all users
 			Set<SelectionKey> allKeys = hotbutton.selector.keys();
@@ -74,22 +74,19 @@ class AdminInterface implements HttpHandler
 					continue;
 			
 				SocketChannel client = (SocketChannel)key.channel();
-				charBufer.flip();
-				client.write(byteBuffer);
+				client.write(buffer);
 			}
 		}
 		
-		// get status of all clients
-		Set<SelectionKey> allKeys = hotbutton.selector.keys();
-		for(SelectionKey key : allKeys)
-		{
-			if(key == hotbutton.serverkey)
-				continue;
-				
-			String username = (String)key.attachment();
-			SocketChannel client = (SocketChannel)key.channel();
-			out.write("<li>" + username + " [" + client.socket().getRemoteSocketAddress() + "] <a class=\"small awesome red\">kick</a></li>");
-		}
+		// write log
+		Iterator<String> iterLogs = hotbutton.logs.iterator();
+		out.write("<ul id=logs>");
+		while(iterLogs.hasNext())
+			out.write("<li>" + iterLogs.next() + "</li>");
+		out.write("</ul>");
+			
+		// write userlist
+		this.writeUserList(out);
 		
 		// write footer and end
 		writeFooter(out);
@@ -108,18 +105,44 @@ class AdminInterface implements HttpHandler
 		"<title>Android Hotbutton Manager</title>" +
 		"</head>" +
 		"<body>" +
-		"<div id=header><h1>Android HotButton Manager</h1></div>" +
-		"<div id=body>" +
+		"<div id=header>" + 
+		"<h1>Android HotButton Manager</h1>" +
+		"</div>" +
+		"<div id=sidebar>" +
 		"<a class=\"large orange awesome\" href=unlock>Unlock all Hotbuttons</a>" +
-		"<a class=\"large green awesome\" href=lock>Lock all Hotbuttons</a>" +
-		"<ul id=users>" +
+		"<a class=\"large green awesome\" href=lock>Lock all Hotbuttons</a>" + 
+		"<a class=\"large magenta awesome\" href=lock>Refresh</a>" +
+		"</div>" +
+		"<div id=body>");
+	}
+	
+	/**
+	 * writeUserList
+	 */
+	private void writeUserList(OutputStreamWriter out) throws IOException
+	{
+		out.write("<ul id=users>" +
 		"<h2>Users</h2>");
+		
+		// get status of all clients
+		Set<SelectionKey> allKeys = hotbutton.selector.keys();
+		for(SelectionKey key : allKeys)
+		{
+			if(key == hotbutton.serverkey)
+				continue;
+				
+			String username = (String)key.attachment();
+			SocketChannel client = (SocketChannel)key.channel();
+			out.write("<li><strong>" + username + "</strong> [" + client.socket().getRemoteSocketAddress() + "] <a class=\"small awesome red\">kick</a></li>");
+		}
+		
+		
 	}
 	
 	/**
 	 * writeFooter
 	 */
-	public void writeFooter(OutputStreamWriter out) throws IOException
+	private void writeFooter(OutputStreamWriter out) throws IOException
 	{
 		out.write("</ul>" +
 		"</div>" +
@@ -200,13 +223,16 @@ public class hotbutton
 	static ServerSocketChannel server;
 	static SelectionKey serverkey;
 	static Selector selector;
+	static List<String> logs;
 
 	/**
 	 * main server function 
 	 */
 	public static void main(String[] args) throws IOException
 	{
-		System.out.println("Starting HotButton Server....");
+		// create logs
+		logs = new ArrayList<String>();
+		log("Starting HotButton Server....");
 		
 		// create admin interface
 		InetSocketAddress address = new InetSocketAddress(8080);
@@ -227,7 +253,7 @@ public class hotbutton
 		serverkey.attach("Server");
 		
 		// main loop
-		System.out.println("Server started...");
+		log("Server started...");
 		for(;;)
 		{
 			// do select
@@ -250,11 +276,12 @@ public class hotbutton
 
 		// login
 		if(request.get(0).equals("login")) {
-			String username = request.get(1);
-			System.out.println((String)key.attachment() + " changed his username to " + username);
-			key.attach(username);
+			String new_username = request.get(1);
+			String old_username = (String)key.attachment();
+			key.attach(new_username);
 			response.add("login");
 			response.add("okay");
+			log(old_username + " changed his username to " + new_username);
 		}
 		
 		// return response
@@ -269,8 +296,6 @@ public class hotbutton
 		// initialisation stuff
 		Set<SelectionKey> readyKeys = selector.selectedKeys();
 		Iterator iterator = readyKeys.iterator();
-		ByteBuffer byteBuffer = ByteBuffer.allocate(512);
-		CharBuffer charBuffer = byteBuffer.asCharBuffer();
 			
 		// iterate through selection
 		for(int i = 0; i < eventCount && iterator.hasNext();)
@@ -287,7 +312,7 @@ public class hotbutton
 				SocketChannel client = server.accept();
 				client.configureBlocking(false);
 				client.register(selector, SelectionKey.OP_READ);
-				System.out.println("Accepted connection from " + client);
+				log("Accepted connection from " + client);
 			}
 			
 			// message from client
@@ -297,39 +322,26 @@ public class hotbutton
 				{
 					// read data to buffer
 					SocketChannel client = (SocketChannel)key.channel();
-					int bytesread = client.read(byteBuffer);
+					ByteBuffer readBuffer = ByteBuffer.allocate(512);
+					int bytesread = client.read(readBuffer);
 					if (bytesread == -1) {
 						key.cancel();
 						client.close();
 					}
 					
 					// need a string
-					if(!byteBuffer.hasArray()) {
-						System.out("Ignoring unknown sequeenze from client...\n");
+					if(!readBuffer.hasArray()) {
+						log("Ignoring unknown sequeenze from " + client);
 						continue;
 					}
 					
-					String s = new String(byteBuffer.array());
-					System.out.println(s);
-				
-					// generate request
-					ArrayList<String> command = new ArrayList<String>();
-					StringBuilder s = new StringBuilder();
-					byteBuffer.flip();
-					while(byteBuffer.hasRemaining()) {
-						char c = (char)byteBuffer.get();
-						if(c == '-') {
-							command.add(s.toString());
-							s = new StringBuilder();
-						} else {
-							s.append(c);
-						}
-					}
-					command.add(s.toString());
-					byteBuffer.clear();
-				
+					// fetch command from buffer
+					String strCommand = new String(readBuffer.array());
+					List<String> lstCommand = Arrays.asList(strCommand.split("-"));
+					
 					// process Command
-					List<String> lstResponse = processCommand(key, command);
+					List<String> lstResponse = processCommand(key, lstCommand);
+					
 					Iterator<String> itResponse = lstResponse.iterator();
 					StringBuilder strResponse = new StringBuilder();
 					while(itResponse.hasNext()) {
@@ -338,21 +350,26 @@ public class hotbutton
 							strResponse.append("-");
 					}
 					strResponse.append("\r\n");
-				
+					
+					System.out.println(strResponse.toString());
+					
 					// send response
-					charBuffer.clear();
-					//charBuffer.put("wie auch immer\r\n");
-					charBuffer.put(strResponse.toString());
-					charBuffer.flip();
-					client.write(byteBuffer);
-					byteBuffer.clear();
-				
-					// ClosedChannelException
-				
+					ByteBuffer writeBuffer = ByteBuffer.wrap(strResponse.toString().getBytes());
+					client.write(writeBuffer);
+					
 				} catch(ClosedChannelException ex) {
 					System.out.println(ex.toString());
 				}
 			}
 		}
+	}
+	
+	/**
+	 * log
+	 */
+	private static void log(String message)
+	{
+		System.out.println(message);
+		logs.add(message);
 	}
 }

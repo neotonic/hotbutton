@@ -193,7 +193,7 @@ public class jsonClient extends AsyncTask<String, String, String> {
             return;
     	}
     	
-    	if(status[0].equals("login-fail") || status[0].equals("kick"))
+    	if(status[0].startsWith("login-fail") || status[0].startsWith("kick"))
     	{
     		textViewName.setText("Name: ");
     		
@@ -211,7 +211,7 @@ public class jsonClient extends AsyncTask<String, String, String> {
     		return;
     	}
     	
-    	if(status[0].equals("login-okay-"))
+    	if(status[0].startsWith("login-okay"))
     	{
     		textViewName.setText("Eingelogt als " + editTextName.getText() + ".");
     		
@@ -226,7 +226,7 @@ public class jsonClient extends AsyncTask<String, String, String> {
     		return;
     	}
     	
-    	if(status[0].equals("lock") && isLoginOkay)
+    	if(status[0].startsWith("lock") && isLoginOkay)
     	{
             imageViewHotButton.setEnabled(false);
             imageViewHotButton.setAlpha(50);	
@@ -234,7 +234,7 @@ public class jsonClient extends AsyncTask<String, String, String> {
             return;
     	}
     	
-    	if(status[0].equals("unlock") && isLoginOkay)
+    	if(status[0].startsWith("unlock") && isLoginOkay)
     	{
             imageViewHotButton.setEnabled(true);
             imageViewHotButton.setAlpha(255);
