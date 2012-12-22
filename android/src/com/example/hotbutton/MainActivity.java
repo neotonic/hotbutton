@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+    	
+    	
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
@@ -66,11 +68,6 @@ public class MainActivity extends Activity {
 				new clientConnect().execute(editTextAddress.getText().toString(),
 											editTextPort.getText().toString());
 				
-				/*
-				new jsonClient().execute("connect", 
-										editTextAddress.getText().toString(),
-										editTextPort.getText().toString());
-				*/
 			}
 		});
         
@@ -81,25 +78,19 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				listener.execute(editTextName.getText().toString());
-				//new jsonClient().execute("play", editTextName.getText().toString());
 				
 			}
 		});
         
+        // buzz
         imageViewHotButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
             	
-            	Toast.makeText(v.getContext(), "asd", Toast.LENGTH_SHORT).show();
+            	Toast.makeText(v.getContext(), "buzz", Toast.LENGTH_SHORT).show();
             	
-            	listener.listening = false;
-            	listener.stop();
-            	try {
-					listener.wait(100000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+            	
+            	
             	
             	new clientBuzz().execute();
             	      
@@ -109,6 +100,24 @@ public class MainActivity extends Activity {
     
     public class clientConnect extends AsyncTask<String, String, String> {
     	
+    	@Override
+    	protected void onPreExecute() {
+    		
+			EditText editTextName =  (EditText) findViewById(R.id.editTextName);
+            editTextName.setEnabled(true);
+            
+            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
+            buttonRegister.setEnabled(true);
+            
+            Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
+            buttonConnect.setEnabled(false);
+            
+			EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
+			editTextAddress.setEnabled(false);
+			
+			EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
+			editTextPort.setEnabled(false);
+    	}
     	
 		@Override
 		protected String doInBackground(String... params) {
@@ -125,7 +134,7 @@ public class MainActivity extends Activity {
 					client = new Socket();
 					
 					client.connect(new InetSocketAddress(address, port));
-					
+					client.setSoTimeout(10);
 					
 					PrintWriter out = new PrintWriter(client.getOutputStream(),true);
 					
@@ -216,6 +225,7 @@ public class MainActivity extends Activity {
 				
 				while(listening)
 				{
+					
 					String line = in.readLine();
 					
 					// debug
@@ -258,8 +268,8 @@ public class MainActivity extends Activity {
         	{
         		textViewName.setText("Name: ");
         		
-        		//editTextName.setAlpha(255);
-        		//buttonRegister.setAlpha(255);
+        		editTextName.setAlpha(255);
+        		buttonRegister.setAlpha(255);
         		
         		editTextName.setEnabled(true);
         		buttonRegister.setEnabled(true);
@@ -273,11 +283,11 @@ public class MainActivity extends Activity {
         	}
         	
         	if(status[0].equals("login-okay"))
-        	{
+        	{ 
         		textViewName.setText("Eingelogt als " + editTextName.getText() + ".");
         		
-        		//editTextName.setAlpha(0);
-        		//buttonRegister.setAlpha(0);
+        		editTextName.setAlpha(0);
+        		buttonRegister.setAlpha(0);
         		
         		editTextName.setEnabled(false);
         		buttonRegister.setEnabled(false);
