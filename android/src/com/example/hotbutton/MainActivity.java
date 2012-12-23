@@ -85,7 +85,19 @@ public class MainActivity extends Activity {
 			}
 		});
         
-
+        
+        // exit
+        Button buttonExit = (Button) findViewById(R.id.buttonExit);
+        buttonExit.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				
+				android.os.Process.killProcess(android.os.Process.myPid());
+				
+			}
+		});
+        
         
         // buzz
         imageViewHotButton.setOnClickListener(new OnClickListener() {
@@ -100,7 +112,15 @@ public class MainActivity extends Activity {
             	      
             }
         });
+        
+        
+        
+        
     }
+    
+    
+    
+    
     
     public class clientConnect extends AsyncTask<String, String, String> {
     	
@@ -109,9 +129,6 @@ public class MainActivity extends Activity {
     		
 			EditText editTextName =  (EditText) findViewById(R.id.editTextName);
             editTextName.setEnabled(true);
-            
-            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
-            buttonRegister.setEnabled(true);
             
             Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
             buttonConnect.setEnabled(false);
@@ -129,47 +146,47 @@ public class MainActivity extends Activity {
 			String address = params[0];
 			Integer port = Integer.parseInt(params[1]);
 			
-			do {
+			
+			try {
+				
+				Log.d("SOCKET", "Connect to: " + address + ":" + port);
+				
+				client = new Socket();
+				client.setSoTimeout(1000);
+				
+				client.connect(new InetSocketAddress(address, port));
+				
+				
+				PrintWriter out = new PrintWriter(client.getOutputStream(),true);
+				
+				Log.d("SOCKET", "Maybe connected to: " + address + ":" + port);
+				
+				// say hi to server
+				out.println("hi");
+				
+				
+			} catch(UnknownHostException e) {
+         		Log.d("Exception", "Unknown host: " + address);
+
+         	} catch(IOException e) {
+         		Log.d("Exception", "No I/O : " + e.toString());
+         	}
+			
+			// sleep if connection failed
+			if(!client.isConnected()) {
 				
 				try {
 					
-					Log.d("SOCKET", "Connect to: " + address + ":" + port);
+					Thread.sleep(1000);
 					
-					client = new Socket();
-					
-					client.connect(new InetSocketAddress(address, port));
-					client.setSoTimeout(1000);
-					
-					PrintWriter out = new PrintWriter(client.getOutputStream(),true);
-					
-					Log.d("SOCKET", "Maybe connected to: " + address + ":" + port);
-					
-					// say hi to server
-					out.println("hi");
-					
-					
-				} catch(UnknownHostException e) {
-	         		Log.d("Exception", "Unknown host: " + address);
-
-	         	} catch(IOException e) {
-	         		Log.d("Exception", "No I/O : " + e.toString());
-	         	}
-				
-				// sleep if connection failed
-				if(!client.isConnected()) {
-					
-					try {
-						
-						Thread.sleep(1000);
-						
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
+				
+			}
 			
-			}while(!client.isConnected());
+
 			
 			return null;
 		}
@@ -179,7 +196,7 @@ public class MainActivity extends Activity {
 			
 			if(client.isConnected())
 			{
-				/*
+				
 				EditText editTextName =  (EditText) findViewById(R.id.editTextName);
 	            editTextName.setEnabled(true);
 	            
@@ -194,7 +211,26 @@ public class MainActivity extends Activity {
 				
 				EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
 				editTextPort.setEnabled(false);
-				*/
+				
+			}
+			else
+			{
+				
+				EditText editTextName =  (EditText) findViewById(R.id.editTextName);
+	            editTextName.setEnabled(false);
+	            
+	            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
+	            buttonRegister.setEnabled(false);
+	            
+	            Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
+	            buttonConnect.setEnabled(true);
+	             
+				EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
+				editTextAddress.setEnabled(true);
+				
+				EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
+				editTextPort.setEnabled(true);
+				
 			}
 		}
     }

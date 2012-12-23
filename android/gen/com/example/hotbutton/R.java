@@ -15,7 +15,7 @@ public final class R {
     }
     public static final class id {
         public static final int buttonConnect=0x7f070005;
-        public static final int buttonReady=0x7f070007;
+        public static final int buttonExit=0x7f070007;
         public static final int buttonRegister=0x7f070006;
         public static final int editTextAddress=0x7f070003;
         public static final int editTextName=0x7f070002;

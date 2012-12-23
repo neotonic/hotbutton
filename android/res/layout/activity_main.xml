@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:ems="10"
-            	android:text="127.0.0.1" />
+            	android:text="172.16.0.24" />
 
             <EditText
                 android:id="@+id/editTextPort"
@@ -76,10 +76,10 @@
                 android:text="Registrieren" />
 
             <Button
-                android:id="@+id/buttonReady"
+                android:id="@+id/buttonExit"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ready" />
+                android:text="Exit" />
 
         </LinearLayout>
 
