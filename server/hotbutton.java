@@ -384,7 +384,7 @@ public class hotbutton
 			{
 				SocketChannel client = server.accept();
 				client.configureBlocking(false);
-				client.register(selector, SelectionKey.OP_READ | );
+				client.register(selector, SelectionKey.OP_READ);
 				Log.d("network", "Accepted connection from " + client);
 			}
 			
