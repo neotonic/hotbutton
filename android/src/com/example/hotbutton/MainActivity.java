@@ -133,19 +133,20 @@ public class MainActivity extends Activity {
 				
 				try {
 					
-					Log.d("client", "Connect to: " + address + ":" + port);
+					Log.d("SOCKET", "Connect to: " + address + ":" + port);
 					
 					client = new Socket();
 					
 					client.connect(new InetSocketAddress(address, port));
-					client.setSoTimeout(10);
+					client.setSoTimeout(1000);
 					
 					PrintWriter out = new PrintWriter(client.getOutputStream(),true);
+					
+					Log.d("SOCKET", "Maybe connected to: " + address + ":" + port);
 					
 					// say hi to server
 					out.println("hi");
 					
-					publishProgress("connected");
 					
 				} catch(UnknownHostException e) {
 	         		Log.d("Exception", "Unknown host: " + address);
@@ -176,24 +177,26 @@ public class MainActivity extends Activity {
 
 		protected void onPostExecute (String arg) {
 			
-			EditText editTextName =  (EditText) findViewById(R.id.editTextName);
-            editTextName.setEnabled(true);
-            
-            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
-            buttonRegister.setEnabled(true);
-            
-            Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
-            buttonConnect.setEnabled(false);
-            
-			EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
-			editTextAddress.setEnabled(false);
-			
-			EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
-			editTextPort.setEnabled(false);
-            
+			if(client.isConnected())
+			{
+				/*
+				EditText editTextName =  (EditText) findViewById(R.id.editTextName);
+	            editTextName.setEnabled(true);
+	            
+	            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
+	            buttonRegister.setEnabled(true);
+	            
+	            Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
+	            buttonConnect.setEnabled(false);
+	            
+				EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
+				editTextAddress.setEnabled(false);
+				
+				EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
+				editTextPort.setEnabled(false);
+				*/
+			}
 		}
-    	
-    	
     }
     
     
@@ -327,8 +330,7 @@ public class MainActivity extends Activity {
 		@Override
 		protected String doInBackground(String... params) {
 			
-			
-			
+
 			Log.d("clientBuzz", "BUZZ");
 			
 			PrintWriter out;
@@ -350,7 +352,5 @@ public class MainActivity extends Activity {
 			listener = new clientLoginAndPlay();
 			listener.execute(((EditText)findViewById(R.id.editTextName)).getText().toString());
 		}
-		
-    	
     }
 }

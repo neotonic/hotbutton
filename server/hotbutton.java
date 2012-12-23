@@ -235,7 +235,7 @@ public class hotbutton
 		log("Starting HotButton Server....");
 		
 		// create admin interface
-		InetSocketAddress address = new InetSocketAddress(8080);
+		InetSocketAddress address = new InetSocketAddress(8888);
 		HttpServer httpServer = HttpServer.create(address, 0);
 		AdminInterface admin = new AdminInterface();
 		httpServer.createContext("/", admin);
