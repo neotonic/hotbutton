@@ -460,7 +460,7 @@ public class hotbutton
 						other.commit();
 						other.isLocked = true;
 						
-						Log.d("processCommand", player.getUsername() + " is a " + (other.equals(player) ? "winner" : "looser"));
+						Log.d("processCommand", other.getUsername() + " is a " + (other.equals(player) ? "winner" : "looser"));
 					} catch(IOException ex) {
 						Log.d("setLock", ex.toString());
 					}
