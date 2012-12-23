@@ -425,6 +425,18 @@ public class hotbutton
 			player.commit();
 		}
 		
+		// buzz
+		else if(player.get(0).equals("buzz")) {
+			Log.d("processCommand", player.getUsername() + " sent a buzz!");
+			player.send("buzz");
+			if(hotbutton.isLocked)
+				player.send("looser");
+			else
+				player.send("winner");
+			player.commit();
+			hotbutton.isLocked = true;
+		}
+		
 		// protocol violation
 		else
 			Log.d("processCommand", "protocol violation by " + player.getUsername());
