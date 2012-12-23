@@ -147,7 +147,7 @@ public class ButtonActivity extends Activity {
                 return;
         	}
         	
-        	if(status[0].startsWith("winner") && loggedIn)
+        	if(status[0].startsWith("buzz-winner") && loggedIn)
         	{
         		textViewMessage.setText("Gewonnen");
         		
@@ -157,7 +157,7 @@ public class ButtonActivity extends Activity {
                 return;
         	}
         	
-        	if(status[0].startsWith("looser") && loggedIn)
+        	if(status[0].startsWith("buzz-looser") && loggedIn)
         	{
         		textViewMessage.setText("Verloren");
         		
