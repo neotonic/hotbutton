@@ -502,7 +502,8 @@ public class hotbutton
 				Log.d("processEvents", "Accepted connection from " + client);
 				
 				// login is not possible while the button is locked
-				if(hotbutton.isLocked) {
+				if(!hotbutton.isLocked) {
+					Log.d("processEvents", "Connection canceled because round was already started!" + client);
 					player.send("error");
 					player.send("you can't join an active round!");
 					player.commit();
