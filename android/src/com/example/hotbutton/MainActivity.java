@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
         final EditText editTextName = (EditText) findViewById(R.id.editTextName);
         Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
         Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
-        Button buttonReady = (Button) findViewById(R.id.buttonReady);
+        
         final EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
         final EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
 
@@ -85,13 +85,7 @@ public class MainActivity extends Activity {
 			}
 		});
         
-        buttonReady.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				
-			}
-        });
+
         
         // buzz
         imageViewHotButton.setOnClickListener(new OnClickListener() {
