@@ -78,9 +78,8 @@ public class ButtonActivity extends Activity {
     		
 			try {
 				
-				
-				out = new PrintWriter(client.socket.getOutputStream(),true);
-				in = new BufferedReader(new InputStreamReader(client.socket.getInputStream()));
+				out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
+				in = new BufferedReader(new InputStreamReader(MainActivity.socket.getInputStream()));
 	    		
 				
 				if(!loggedIn) {
@@ -158,7 +157,7 @@ public class ButtonActivity extends Activity {
                 return;
         	}
         	
-        	if(status[0].startsWith("loser") && loggedIn)
+        	if(status[0].startsWith("looser") && loggedIn)
         	{
         		textViewMessage.setText("Verloren");
         		
@@ -192,9 +191,9 @@ public class ButtonActivity extends Activity {
 			
 			PrintWriter out;
 			try {
-				out = new PrintWriter(client.socket.getOutputStream(),true);
+				out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
 				
-				out.println("buzz!");
+				out.println("buzz");
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

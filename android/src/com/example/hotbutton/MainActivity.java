@@ -33,10 +33,11 @@ public class MainActivity extends Activity {
 	Boolean loggedIn = false;
 	//Socket client;
 	clientLoginAndPlay listener;
+	public static Socket socket;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-    	
+    	 
     	
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -124,13 +125,13 @@ public class MainActivity extends Activity {
 				
 				Log.d("SOCKET", "Connect to: " + address + ":" + port);
 				
-				client.socket = new Socket();
+				MainActivity.socket = new Socket();
 				
-				client.socket.connect(new InetSocketAddress(address, port), 1000);
+				MainActivity.socket.connect(new InetSocketAddress(address, port), 1000);
 
-				client.socket.setSoTimeout(1000);
+				MainActivity.socket.setSoTimeout(1000);
 				
-				PrintWriter out = new PrintWriter(client.socket.getOutputStream(),true);
+				PrintWriter out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
 				
 				Log.d("SOCKET", "Maybe connected to: " + address + ":" + port);
 				
@@ -152,9 +153,9 @@ public class MainActivity extends Activity {
 
 		protected void onPostExecute (String arg) {
 			
-			Log.d("clientConnect:onPostExecute", "client.isConnected() == " + client.socket.isConnected());
+			Log.d("clientConnect:onPostExecute", "client.isConnected() == " + MainActivity.socket.isConnected());
 			
-			if(client.socket.isConnected())
+			if(MainActivity.socket.isConnected())
 			{
 				// enable login widgets
 	    		
@@ -200,8 +201,8 @@ public class MainActivity extends Activity {
 			try {
 				
 				
-				out = new PrintWriter(client.socket.getOutputStream(),true);
-				in = new BufferedReader(new InputStreamReader(client.socket.getInputStream()));
+				out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
+				in = new BufferedReader(new InputStreamReader(MainActivity.socket.getInputStream()));
 	    		
 				
 				if(!loggedIn) {
@@ -292,7 +293,7 @@ public class MainActivity extends Activity {
 			
 			PrintWriter out;
 			try {
-				out = new PrintWriter(client.socket.getOutputStream(),true);
+				out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
 				
 				out.println("buzz!");
 				
