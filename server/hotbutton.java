@@ -579,10 +579,13 @@ public class hotbutton
 				SocketChannel client = (SocketChannel)key.channel();
 				Player player = (Player)key.attachment();
 				
-				if(hotbutton.isLocked)
+				if(hotbutton.isLocked) {
 					player.send("lock");
-				else
+					Log.d("setLock", "locking " + player.getUsername());
+				} else {
 					player.send("unlock");
+					Log.d("setLock", "unlock " + player.getUsername());
+				}
 				
 				player.commit();
 				player.isLocked = lock;
