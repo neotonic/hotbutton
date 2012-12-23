@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
 
 import java.lang.InterruptedException;
 import java.lang.StringBuilder;
@@ -35,10 +37,47 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.Headers;
 
 /**
+ * logging class
+ */
+class Log
+{
+	static List<String> logs;
+	
+	/**
+	 * gerneral public log method
+	 */
+	public static void d(String section, String message)
+	{
+		// init
+		if(logs == null)
+			logs = new ArrayList<String>();
+			
+		String s = "[" + section.toUpperCase() + "] - " + message;
+		
+		// add to queue
+		System.out.println(s);
+		logs.add(s);
+	}
+}
+
+/**
  * admin interface
  */
 class AdminInterface implements HttpHandler
 {
+	public static Map<String, String> getQueryMap(String query)
+	{
+		String[] params = query.split("&");
+		Map<String, String> map = new HashMap<String, String>();
+		for (String param : params)
+		{
+			String name = param.split("=")[0];
+			String value = param.split("=")[1];
+			map.put(name, value);
+		}
+		return map;
+	}
+	
 	public void handle(HttpExchange exchange) throws IOException
 	{
 		// send headers
@@ -78,8 +117,31 @@ class AdminInterface implements HttpHandler
 			}
 		}
 		
+		// kick user
+		if(path.startsWith("/kick")) {
+			String query = requestedUri.getQuery();
+			Map<String, String> map = getQueryMap(query);
+			String strId = map.get("id");
+			int intId = Integer.parseInt(strId);
+			Set<SelectionKey> allKeys = hotbutton.selector.keys();
+			for(SelectionKey key : allKeys)
+			{
+				if(key == hotbutton.serverkey)
+					continue;
+					
+				if(--intId == 0) {
+					SocketChannel client = (SocketChannel)key.channel();
+					String username = (String)key.attachment();
+					client.close();
+					key.cancel();
+					Log.d("admin", "kicked " + username +  " from the server!");
+					break;
+				}
+			}
+		}
+		
 		// write log
-		Iterator<String> iterLogs = hotbutton.logs.iterator();
+		Iterator<String> iterLogs = Log.logs.iterator();
 		out.write("<ul id=logs>");
 		while(iterLogs.hasNext())
 			out.write("<li>" + iterLogs.next() + "</li>");
@@ -125,6 +187,7 @@ class AdminInterface implements HttpHandler
 		"<h2>Users</h2>");
 		
 		// get status of all clients
+		int i = 0;
 		Set<SelectionKey> allKeys = hotbutton.selector.keys();
 		for(SelectionKey key : allKeys)
 		{
@@ -133,7 +196,8 @@ class AdminInterface implements HttpHandler
 				
 			String username = (String)key.attachment();
 			SocketChannel client = (SocketChannel)key.channel();
-			out.write("<li><strong>" + username + "</strong> [" + client.socket().getRemoteSocketAddress() + "] <a class=\"small awesome red\">kick</a></li>");
+			i++;
+			out.write("<li><strong>" + username + "</strong> [" + client.socket().getRemoteSocketAddress() + "] <a href=/kick?id=" + i + " class=\"small awesome red\">kick</a></li>");
 		}
 		
 		
@@ -173,7 +237,7 @@ class FileController implements HttpHandler
 	 */
 	public void handle(HttpExchange exchange) throws IOException
 	{
-		// 
+		// fetch meta stuff
 		URI requestedUri = exchange.getRequestURI();
 		Headers responseHeaders = exchange.getResponseHeaders();
 		
@@ -223,7 +287,6 @@ public class hotbutton
 	static ServerSocketChannel server;
 	static SelectionKey serverkey;
 	static Selector selector;
-	static List<String> logs;
 
 	/**
 	 * main server function 
@@ -231,8 +294,7 @@ public class hotbutton
 	public static void main(String[] args) throws IOException
 	{
 		// create logs
-		logs = new ArrayList<String>();
-		log("Starting HotButton Server....");
+		Log.d("main", "Starting HotButton Server....");
 		
 		// create admin interface
 		InetSocketAddress address = new InetSocketAddress(8888);
@@ -253,7 +315,7 @@ public class hotbutton
 		serverkey.attach("Server");
 		
 		// main loop
-		log("Server started...");
+		Log.d("main", "Server started...");
 		for(;;)
 		{
 			// do select
@@ -273,16 +335,27 @@ public class hotbutton
 	static List<String> processCommand(SelectionKey key, List<String> request)
 	{
 		List<String> response = new ArrayList<String>();
-
+		
+		// hi
+		if(request.get(0).equals("hi")) {
+			response.add("hi");
+			response.add("hotbutton");
+			response.add("v0.0.1");
+		}
+		
 		// login
-		if(request.get(0).equals("login")) {
+		else if(request.get(0).equals("login")) {
 			String new_username = request.get(1);
 			String old_username = (String)key.attachment();
 			key.attach(new_username);
 			response.add("login");
 			response.add("okay");
-			log(old_username + " changed his username to " + new_username);
+			Log.d("network", old_username + " changed his username to " + new_username);
 		}
+		
+		// protocol violation
+		else
+			Log.d("network", "protocol violation by " + (String)key.attachment());
 		
 		// return response
 		return response;
@@ -296,7 +369,7 @@ public class hotbutton
 		// initialisation stuff
 		Set<SelectionKey> readyKeys = selector.selectedKeys();
 		Iterator iterator = readyKeys.iterator();
-			
+		
 		// iterate through selection
 		for(int i = 0; i < eventCount && iterator.hasNext();)
 		{
@@ -311,8 +384,8 @@ public class hotbutton
 			{
 				SocketChannel client = server.accept();
 				client.configureBlocking(false);
-				client.register(selector, SelectionKey.OP_READ);
-				log("Accepted connection from " + client);
+				client.register(selector, SelectionKey.OP_READ | );
+				Log.d("network", "Accepted connection from " + client);
 			}
 			
 			// message from client
@@ -331,14 +404,14 @@ public class hotbutton
 					
 					// need a string
 					if(!readBuffer.hasArray()) {
-						log("Ignoring unknown sequeenze from " + client);
+						Log.d("network", "Ignoring unknown sequeenze from " + client);
 						continue;
 					}
 					
 					// fetch command from buffer
 					String strCommand = new String(readBuffer.array()).trim();
 					List<String> lstCommand = Arrays.asList(strCommand.split("-"));
-					log(strCommand);
+					Log.d("network", strCommand);
 					
 					// process Command
 					List<String> lstResponse = processCommand(key, lstCommand);
@@ -361,14 +434,5 @@ public class hotbutton
 				}
 			}
 		}
-	}
-	
-	/**
-	 * log
-	 */
-	private static void log(String message)
-	{
-		System.out.println(message);
-		logs.add(message);
 	}
 }
