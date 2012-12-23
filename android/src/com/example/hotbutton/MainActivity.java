@@ -127,9 +127,8 @@ public class MainActivity extends Activity {
     	@Override
     	protected void onPreExecute() {
     		
-			EditText editTextName =  (EditText) findViewById(R.id.editTextName);
-            editTextName.setEnabled(true);
-            
+    		// disable connection widgets
+    		
             Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
             buttonConnect.setEnabled(false);
             
@@ -152,10 +151,10 @@ public class MainActivity extends Activity {
 				Log.d("SOCKET", "Connect to: " + address + ":" + port);
 				
 				client = new Socket();
+				
+				client.connect(new InetSocketAddress(address, port), 1000);
+
 				client.setSoTimeout(1000);
-				
-				client.connect(new InetSocketAddress(address, port));
-				
 				
 				PrintWriter out = new PrintWriter(client.getOutputStream(),true);
 				
@@ -172,21 +171,6 @@ public class MainActivity extends Activity {
          		Log.d("Exception", "No I/O : " + e.toString());
          	}
 			
-			// sleep if connection failed
-			if(!client.isConnected()) {
-				
-				try {
-					
-					Thread.sleep(1000);
-					
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				
-			}
-			
-
 			
 			return null;
 		}
@@ -194,34 +178,22 @@ public class MainActivity extends Activity {
 
 		protected void onPostExecute (String arg) {
 			
+			Log.d("clientConnect:onPostExecute", "client.isConnected() == " + client.isConnected());
+			
 			if(client.isConnected())
 			{
-				
+				// enable login widgets
+	    		
 				EditText editTextName =  (EditText) findViewById(R.id.editTextName);
 	            editTextName.setEnabled(true);
 	            
 	            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
 	            buttonRegister.setEnabled(true);
-	            
-	            Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
-	            buttonConnect.setEnabled(false);
-	            
-				EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
-				editTextAddress.setEnabled(false);
-				
-				EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
-				editTextPort.setEnabled(false);
-				
 			}
 			else
 			{
+				// enable connection widgets
 				
-				EditText editTextName =  (EditText) findViewById(R.id.editTextName);
-	            editTextName.setEnabled(false);
-	            
-	            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
-	            buttonRegister.setEnabled(false);
-	            
 	            Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
 	            buttonConnect.setEnabled(true);
 	             
@@ -302,16 +274,11 @@ public class MainActivity extends Activity {
 			     
 			TextView textViewName = (TextView) findViewById(R.id.textViewName);
 			EditText editTextName = (EditText) findViewById(R.id.editTextName);
-			    
 			Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
-			Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
-			    
-			EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
-			   
-			EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
+
           
         	
-        	if(status[0].equals("login-fail") || status[0].equals("kick"))
+        	if(status[0].startsWith("login-fail") || status[0].equals("kick"))
         	{
         		textViewName.setText("Name: ");
         		
@@ -329,7 +296,7 @@ public class MainActivity extends Activity {
         		return;
         	}
         	
-        	if(status[0].equals("login-okay"))
+        	if(status[0].startsWith("login-okay"))
         	{ 
         		textViewName.setText("Eingelogt als " + editTextName.getText() + ".");
         		
@@ -344,7 +311,7 @@ public class MainActivity extends Activity {
         		return;
         	}
         	
-        	if(status[0].equals("lock") && loggedIn)
+        	if(status[0].startsWith("lock") && loggedIn)
         	{
                 imageViewHotButton.setEnabled(false);
                 imageViewHotButton.setAlpha(50);	
@@ -352,7 +319,7 @@ public class MainActivity extends Activity {
                 return;
         	}
         	
-        	if(status[0].equals("unlock") && loggedIn)
+        	if(status[0].startsWith("unlock") && loggedIn)
         	{
                 imageViewHotButton.setEnabled(true);
                 imageViewHotButton.setAlpha(255);
