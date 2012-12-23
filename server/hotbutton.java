@@ -453,20 +453,7 @@ public class hotbutton
 						Log.d("setLock", ex.toString());
 					}
 				}
-				
-				
-				
-				player.send("looser");
 			}
-			 
-			else {
-				player.send("winner");
-				
-			}
-			
-			player.send("buzz");
-			player.commit();
-			hotbutton.isLocked = true;
 		}
 		
 		// protocol violation
