@@ -203,6 +203,7 @@ public class MainActivity extends Activity {
 				EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
 				editTextPort.setEnabled(true);
 				
+				Toast.makeText(MainActivity.this, "Verbindung fehlgeschlagen.", Toast.LENGTH_SHORT).show();
 			}
 		}
     }
