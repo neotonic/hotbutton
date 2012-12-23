@@ -89,56 +89,27 @@ class AdminInterface implements HttpHandler
 		OutputStream responseBody = exchange.getResponseBody();
 		OutputStreamWriter out = new OutputStreamWriter(responseBody);
 		
-		// write header
-		writeHeader(out);
-		
 		// uri
 		URI requestedUri = exchange.getRequestURI();
 		String path = requestedUri.getPath();
 		
 		// unlock or lock
-		if(path.startsWith("/unlock") || path.startsWith("/lock")) {
-			// fill buffer with data
-			ByteBuffer buffer;
-			if(path.startsWith("/unlock"))
-				buffer = ByteBuffer.wrap("unlock\r\n".getBytes("US-ASCII"));
-			else
-				buffer = ByteBuffer.wrap("lock\r\n".getBytes("US-ASCII"));
+		if(path.startsWith("/unlock"))
+			hotbutton.setLock(false);
+		else if(path.startsWith("/lock"))
+			hotbutton.setLock(true);
 			
-			// send buffer to all users
-			Set<SelectionKey> allKeys = hotbutton.selector.keys();
-			for(SelectionKey key : allKeys)
-			{
-				if(key == hotbutton.serverkey)
-					continue;
-			
-				SocketChannel client = (SocketChannel)key.channel();
-				client.write(buffer);
-			}
-		}
-		
 		// kick user
 		if(path.startsWith("/kick")) {
 			String query = requestedUri.getQuery();
 			Map<String, String> map = getQueryMap(query);
 			String strId = map.get("id");
 			int intId = Integer.parseInt(strId);
-			Set<SelectionKey> allKeys = hotbutton.selector.keys();
-			for(SelectionKey key : allKeys)
-			{
-				if(key == hotbutton.serverkey)
-					continue;
-					
-				if(--intId == 0) {
-					SocketChannel client = (SocketChannel)key.channel();
-					String username = (String)key.attachment();
-					client.close();
-					key.cancel();
-					Log.d("admin", "kicked " + username +  " from the server!");
-					break;
-				}
-			}
+			hotbutton.kickUserById(intId);
 		}
+		
+		// write header
+		writeHeader(out);
 		
 		// write log
 		Iterator<String> iterLogs = Log.logs.iterator();
@@ -170,11 +141,25 @@ class AdminInterface implements HttpHandler
 		"<div id=header>" + 
 		"<h1>Android HotButton Manager</h1>" +
 		"</div>" +
-		"<div id=sidebar>" +
-		"<a class=\"large orange awesome\" href=unlock>Unlock all Hotbuttons</a>" +
-		"<a class=\"large green awesome\" href=lock>Lock all Hotbuttons</a>" + 
-		"<a class=\"large magenta awesome\" href=/>Refresh</a>" +
-		"</div>" +
+		"<div id=sidebar>" + 
+		"<a class=\"large magenta awesome\" href=/>Refresh</a>");
+		
+		// lock or unlock button ?
+		if(hotbutton.isLocked)
+			out.write("<a class=\"large orange awesome\" href=unlock>Unlock all Hotbuttons</a>");
+		else
+			out.write("<a class=\"large green awesome\" href=lock>Lock all Hotbuttons</a>");
+			
+		// status
+		out.write("<span><strong>Status:</strong> ");
+		if(hotbutton.isLocked)
+			out.write("<font color=red>locked</font>");
+		else
+			out.write("<font color=green>unlocked</font>");
+		out.write("</span>");
+		
+		// rest
+		out.write("</div>" +
 		"<div id=body>");
 	}
 	
@@ -187,20 +172,18 @@ class AdminInterface implements HttpHandler
 		"<h2>Users</h2>");
 		
 		// get status of all clients
-		int i = 0;
 		Set<SelectionKey> allKeys = hotbutton.selector.keys();
 		for(SelectionKey key : allKeys)
 		{
 			if(key == hotbutton.serverkey)
 				continue;
 				
-			String username = (String)key.attachment();
-			SocketChannel client = (SocketChannel)key.channel();
-			i++;
-			out.write("<li><strong>" + username + "</strong> [" + client.socket().getRemoteSocketAddress() + "] <a href=/kick?id=" + i + " class=\"small awesome red\">kick</a></li>");
+			Player player = (Player)key.attachment();
+			String username = player.getUsername();
+			String address = player.getAddress();
+			int id = player.getId();
+			out.write("<li><strong>" + username + "</strong> [" + address + "] <a href=/kick?id=" + id + " class=\"small awesome red\">kick</a></li>");
 		}
-		
-		
 	}
 	
 	/**
@@ -277,6 +260,92 @@ class FileController implements HttpHandler
 }
 
 /**
+ * Player
+ */
+class Player
+{
+	// static member vars
+	private static int id_count = 1;
+	
+	// member vars
+	private String username;
+	private int id;
+	private StringBuilder strResponse;
+	private List<String> lstCommand;
+	private SocketChannel socket;
+	
+	/**
+	 * ctor new player
+	 */
+	Player(SocketChannel socket)
+	{
+		this.strResponse = new StringBuilder();
+		this.socket = socket;
+		this.id = id_count++;
+	}
+	
+	void setUsername(String username) { this.username = username; }
+	String getUsername() { return (username == null) ? "unbekannt" : this.username; }
+	String getAddress() { return this.socket.socket().getRemoteSocketAddress().toString(); }
+	int getId() { return this.id; }
+	
+	/**
+	 * enqueue token for client
+	 */
+	void send(String tok)
+	{
+		if(this.strResponse.length() > 0)
+			this.strResponse.append("-");
+			
+		this.strResponse.append(tok);
+	}
+	
+	/**
+	 * send all to client
+	 */
+	void commit() throws IOException
+	{
+		// send response
+		this.strResponse.append("\r\n");
+		ByteBuffer writeBuffer = ByteBuffer.wrap(strResponse.toString().getBytes());
+		this.socket.write(writeBuffer);
+		
+		// create new strbuilder
+		this.strResponse = new StringBuilder();
+	}
+	
+	/**
+	 * read - reads data from socket
+	 */
+	Boolean read() throws IOException
+	{
+		// read data to buffer
+		ByteBuffer readBuffer = ByteBuffer.allocate(512);
+		int bytesread = this.socket.read(readBuffer);
+		if (bytesread == -1) {
+			this.socket.close();
+			return false;
+		}
+		
+		// fetch command from buffer
+		String strCommand = new String(readBuffer.array()).trim();
+		this.lstCommand = Arrays.asList(strCommand.split("-"));
+		
+		// ditto
+		Log.d("player", strCommand);
+		return true;
+	}
+	
+	/**
+	 * get stuff
+	 */
+	public String get(int i)
+	{
+		return this.lstCommand.get(i);
+	}
+}
+
+/**
  * hotbutton main class
  */
 public class hotbutton
@@ -287,6 +356,7 @@ public class hotbutton
 	static ServerSocketChannel server;
 	static SelectionKey serverkey;
 	static Selector selector;
+	static Boolean isLocked = true;
 
 	/**
 	 * main server function 
@@ -332,33 +402,32 @@ public class hotbutton
 	/**
 	 * processCommand
 	 */
-	static List<String> processCommand(SelectionKey key, List<String> request)
+	static void processCommand(Player player) throws IOException
 	{
-		List<String> response = new ArrayList<String>();
+		// init
+		Log.d("processCommand", "processing command...");
 		
 		// hi
-		if(request.get(0).equals("hi")) {
-			response.add("hi");
-			response.add("hotbutton");
-			response.add("v0.0.1");
+		if(player.get(0).equals("hi")) {
+			player.send("hi");
+			player.send("hotbutton");
+			player.send("v0.0.1");
+			player.commit();
 		}
 		
 		// login
-		else if(request.get(0).equals("login")) {
-			String new_username = request.get(1);
-			String old_username = (String)key.attachment();
-			key.attach(new_username);
-			response.add("login");
-			response.add("okay");
-			Log.d("network", old_username + " changed his username to " + new_username);
+		else if(player.get(0).equals("login")) {
+			String username = player.get(1);
+			Log.d("processCommand", player.getUsername() + " changed his username to " + username);
+			player.setUsername(username);
+			player.send("login");
+			player.send("okay");
+			player.commit();
 		}
 		
 		// protocol violation
 		else
-			Log.d("network", "protocol violation by " + (String)key.attachment());
-		
-		// return response
-		return response;
+			Log.d("processCommand", "protocol violation by " + player.getUsername());
 	}
 	 
 	 /**
@@ -383,9 +452,14 @@ public class hotbutton
 			if (key == serverkey && key.isAcceptable())
 			{
 				SocketChannel client = server.accept();
+				Player player = new Player(client);
 				client.configureBlocking(false);
-				client.register(selector, SelectionKey.OP_READ);
-				Log.d("network", "Accepted connection from " + client);
+				client.register(selector, SelectionKey.OP_READ, player);
+				Log.d("processEvents", "Accepted connection from " + client);
+				
+				// update client status
+				player.send((isLocked) ? "locked" : "unlock");
+				player.commit();
 			}
 			
 			// message from client
@@ -393,45 +467,87 @@ public class hotbutton
 			{
 				try
 				{
-					// read data to buffer
+					// fetch correct player
 					SocketChannel client = (SocketChannel)key.channel();
-					ByteBuffer readBuffer = ByteBuffer.allocate(512);
-					int bytesread = client.read(readBuffer);
-					if (bytesread == -1) {
-						key.cancel();
-						client.close();
-					}
+					Player player = (Player)key.attachment();
 					
-					// need a string
-					if(!readBuffer.hasArray()) {
-						Log.d("network", "Ignoring unknown sequeenze from " + client);
+					// closed connection
+					if(!client.isConnected()) {
+						Log.d("processEvents", player.getUsername() + " has disconnected.");
+						key.cancel();
 						continue;
 					}
 					
-					// fetch command from buffer
-					String strCommand = new String(readBuffer.array()).trim();
-					List<String> lstCommand = Arrays.asList(strCommand.split("-"));
-					Log.d("network", strCommand);
+					// need a string
+					if(!player.read()) {
+						Log.d("processEvents", "Ignoring unknown sequeenze from " + player.getAddress());
+						continue;
+					}
 					
 					// process Command
-					List<String> lstResponse = processCommand(key, lstCommand);
-					
-					Iterator<String> itResponse = lstResponse.iterator();
-					StringBuilder strResponse = new StringBuilder();
-					while(itResponse.hasNext()) {
-						strResponse.append(itResponse.next());
-						if(itResponse.hasNext())
-							strResponse.append("-");
-					}
-					strResponse.append("\r\n");
-					
-					// send response
-					ByteBuffer writeBuffer = ByteBuffer.wrap(strResponse.toString().getBytes());
-					client.write(writeBuffer);
-					
+					processCommand(player);
 				} catch(ClosedChannelException ex) {
 					System.out.println(ex.toString());
 				}
+			}
+		}
+	}
+	
+	/**
+	 * kickUserById
+	 */
+	public static void kickUserById(int id)
+	{
+		Set<SelectionKey> allKeys = hotbutton.selector.keys();
+		for(SelectionKey key : allKeys)
+		{
+			if(key == hotbutton.serverkey)
+				continue;
+			
+			SocketChannel client = (SocketChannel)key.channel();
+			Player player = (Player)key.attachment();
+			
+			try
+			{
+				if(player.getId() == id) {
+					player.send("kick");
+					player.commit();
+					client.close();
+					Log.d("kickUserById", "kicked " + player.getUsername() +  " from the server!");
+					break;
+				}
+			} catch(IOException ex) {
+				Log.d("kickUserById", ex.toString());
+			}
+		}
+	}
+	
+	/**
+	 * setLock updates the server's lock state
+	 */
+	public static void setLock(Boolean lock)
+	{
+		// send lock state to all users
+		hotbutton.isLocked = lock;
+		Set<SelectionKey> allKeys = hotbutton.selector.keys();
+		for(SelectionKey key : allKeys)
+		{
+			if(key == hotbutton.serverkey)
+				continue;
+			
+			try
+			{
+				SocketChannel client = (SocketChannel)key.channel();
+				Player player = (Player)key.attachment();
+				
+				if(hotbutton.isLocked)
+					player.send("lock");
+				else
+					player.send("unlock");
+				
+				player.commit();
+			} catch(IOException ex) {
+				Log.d("setLock", ex.toString());
 			}
 		}
 	}
