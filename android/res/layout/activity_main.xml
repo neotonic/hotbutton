@@ -85,14 +85,6 @@
 
     </LinearLayout>
 
-    <ImageView
-        android:id="@+id/imageViewHotButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"
-        android:src="@android:drawable/dialog_holo_dark_frame" />
-
 
 
 </RelativeLayout>

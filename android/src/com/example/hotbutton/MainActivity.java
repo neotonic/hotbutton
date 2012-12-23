@@ -13,6 +13,7 @@ import java.net.UnknownHostException;
 import com.example.hotbutton.R;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -30,17 +31,16 @@ public class MainActivity extends Activity {
 	
 	
 	Boolean loggedIn = false;
-	Socket client;
+	//Socket client;
 	clientLoginAndPlay listener;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
     	
-    	 
+    	
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        ImageView imageViewHotButton = (ImageView) findViewById(R.id.imageViewHotButton);
         TextView textViewName = (TextView) findViewById(R.id.textViewName);
         final EditText editTextName = (EditText) findViewById(R.id.editTextName);
         Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
@@ -49,14 +49,7 @@ public class MainActivity extends Activity {
         final EditText editTextAddress = (EditText) findViewById(R.id.editTextAddress);
         final EditText editTextPort = (EditText) findViewById(R.id.editTextPort);
 
-        
-        
-        
-        
-        // disable all widgets
-        imageViewHotButton.setEnabled(false);
-        imageViewHotButton.setAlpha(50);
-        
+      
         editTextName.setEnabled(false);
         buttonRegister.setEnabled(false);
         
@@ -97,25 +90,6 @@ public class MainActivity extends Activity {
 				
 			}
 		});
-        
-        
-        // buzz
-        imageViewHotButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-            	
-            	Toast.makeText(v.getContext(), "buzz", Toast.LENGTH_SHORT).show();
-      
-            	listener.listening = false;
-            	new clientBuzz().execute();
-            	
-            	      
-            }
-        });
-        
-        
-        
-        
     }
     
     
@@ -150,13 +124,13 @@ public class MainActivity extends Activity {
 				
 				Log.d("SOCKET", "Connect to: " + address + ":" + port);
 				
-				client = new Socket();
+				client.socket = new Socket();
 				
-				client.connect(new InetSocketAddress(address, port), 1000);
+				client.socket.connect(new InetSocketAddress(address, port), 1000);
 
-				client.setSoTimeout(1000);
+				client.socket.setSoTimeout(1000);
 				
-				PrintWriter out = new PrintWriter(client.getOutputStream(),true);
+				PrintWriter out = new PrintWriter(client.socket.getOutputStream(),true);
 				
 				Log.d("SOCKET", "Maybe connected to: " + address + ":" + port);
 				
@@ -178,9 +152,9 @@ public class MainActivity extends Activity {
 
 		protected void onPostExecute (String arg) {
 			
-			Log.d("clientConnect:onPostExecute", "client.isConnected() == " + client.isConnected());
+			Log.d("clientConnect:onPostExecute", "client.isConnected() == " + client.socket.isConnected());
 			
-			if(client.isConnected())
+			if(client.socket.isConnected())
 			{
 				// enable login widgets
 	    		
@@ -189,6 +163,7 @@ public class MainActivity extends Activity {
 	            
 	            Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
 	            buttonRegister.setEnabled(true);
+	            
 			}
 			else
 			{
@@ -225,8 +200,8 @@ public class MainActivity extends Activity {
 			try {
 				
 				
-				out = new PrintWriter(client.getOutputStream(),true);
-				in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+				out = new PrintWriter(client.socket.getOutputStream(),true);
+				in = new BufferedReader(new InputStreamReader(client.socket.getInputStream()));
 	    		
 				
 				if(!loggedIn) {
@@ -270,27 +245,20 @@ public class MainActivity extends Activity {
 		}
 
 		protected void onProgressUpdate(String... status) {
-    		
-			ImageView imageViewHotButton = (ImageView) findViewById(R.id.imageViewHotButton);
+
 			     
 			TextView textViewName = (TextView) findViewById(R.id.textViewName);
 			EditText editTextName = (EditText) findViewById(R.id.editTextName);
 			Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
-
-          
+			
+			
         	
         	if(status[0].startsWith("login-fail") || status[0].equals("kick"))
         	{
         		textViewName.setText("Name: ");
         		
-        		editTextName.setAlpha(255);
-        		buttonRegister.setAlpha(255);
-        		
         		editTextName.setEnabled(true);
         		buttonRegister.setEnabled(true);
-        		
-                imageViewHotButton.setEnabled(false);
-                imageViewHotButton.setAlpha(50);
         		
                 loggedIn = false;
         		
@@ -301,31 +269,16 @@ public class MainActivity extends Activity {
         	{ 
         		textViewName.setText("Eingelogt als " + editTextName.getText() + ".");
         		
-        		editTextName.setAlpha(0);
-        		buttonRegister.setAlpha(0);
-        		
         		editTextName.setEnabled(false);
         		buttonRegister.setEnabled(false);
         		
+        		listening = false;
+        		
         		loggedIn = true;
         		
+        		startActivity(new Intent(MainActivity.this, ButtonActivity.class));
+        		
         		return;
-        	}
-        	
-        	if(status[0].startsWith("lock") && loggedIn)
-        	{
-                imageViewHotButton.setEnabled(false);
-                imageViewHotButton.setAlpha(50);	
-                
-                return;
-        	}
-        	
-        	if(status[0].startsWith("unlock") && loggedIn)
-        	{
-                imageViewHotButton.setEnabled(true);
-                imageViewHotButton.setAlpha(255);
-                
-                return;
         	}
     	}
     }
@@ -339,7 +292,7 @@ public class MainActivity extends Activity {
 			
 			PrintWriter out;
 			try {
-				out = new PrintWriter(client.getOutputStream(),true);
+				out = new PrintWriter(client.socket.getOutputStream(),true);
 				
 				out.println("buzz!");
 				
