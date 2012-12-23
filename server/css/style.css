@@ -65,13 +65,18 @@ body {
 	width: 250px;
 	padding: 10px;
 	background-color: rgb(216, 228, 216);
-	list-style-image: url('../images/android_icon.png');
+	list-style-image: url('../images/android_locked.png');
 }
 
 #users li {
 	font-size: 11px;
 	margin-left: 30px;
 	margin-top: 7px;
+}
+
+#users li.unlocked
+{
+	list-style-image: url('../images/android_unlocked.png');
 }
 
 #logs {

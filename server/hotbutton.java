@@ -182,7 +182,14 @@ class AdminInterface implements HttpHandler
 			String username = player.getUsername();
 			String address = player.getAddress();
 			int id = player.getId();
-			out.write("<li><strong>" + username + "</strong> [" + address + "] <a href=/kick?id=" + id + " class=\"small awesome red\">kick</a></li>");
+			
+			// locked or unlocked
+			if(player.isLocked)
+				out.write("<li class=locked>");
+			else
+				out.write("<li class=unlocked>");
+			
+			out.write("<strong>" + username + "</strong> [" + address + "] <a href=/kick?id=" + id + " class=\"small awesome red\">kick</a></li>");
 		}
 	}
 	
@@ -273,6 +280,7 @@ class Player
 	private StringBuilder strResponse;
 	private List<String> lstCommand;
 	private SocketChannel socket;
+	public Boolean isLocked;
 	
 	/**
 	 * ctor new player
@@ -282,6 +290,7 @@ class Player
 		this.strResponse = new StringBuilder();
 		this.socket = socket;
 		this.id = id_count++;
+		this.isLocked = true;
 	}
 	
 	void setUsername(String username) { this.username = username; }
@@ -487,16 +496,6 @@ public class hotbutton
 				client.configureBlocking(false);
 				client.register(selector, SelectionKey.OP_READ, player);
 				Log.d("processEvents", "Accepted connection from " + client);
-				
-				// login is not possible while the button is locked
-				if(!hotbutton.isLocked) {
-					Log.d("processEvents", "Connection canceled because round was already started!" + client);
-					player.send("error");
-					player.send("you can't join an active round!");
-					player.commit();
-					client.close();
-					continue;
-				}
 			}
 			
 			// message from client
@@ -583,6 +582,7 @@ public class hotbutton
 					player.send("unlock");
 				
 				player.commit();
+				player.isLocked = lock;
 			} catch(IOException ex) {
 				Log.d("setLock", ex.toString());
 			}
