@@ -428,11 +428,43 @@ public class hotbutton
 		// buzz
 		else if(player.get(0).equals("buzz")) {
 			Log.d("processCommand", player.getUsername() + " sent a buzz!");
-			player.send("buzz");
-			if(hotbutton.isLocked)
+			
+			
+			// the button must be unlocked to select a winner
+			if(!hotbutton.isLocked)
+			{
+				hotbutton.isLocked = true;
+				Set<SelectionKey> allKeys = hotbutton.selector.keys();
+				for(SelectionKey key : allKeys)
+				{
+					if(key == hotbutton.serverkey)
+						continue;
+					
+					try
+					{
+						SocketChannel client = (SocketChannel)key.channel();
+						Player other = (Player)key.attachment();
+						
+						// is he the one who pressed ?
+						other.send("buzz");
+						other.send(other.equals(player) ? "winner" : "looser");
+						other.commit();
+					} catch(IOException ex) {
+						Log.d("setLock", ex.toString());
+					}
+				}
+				
+				
+				
 				player.send("looser");
-			else
+			}
+			 
+			else {
 				player.send("winner");
+				
+			}
+			
+			player.send("buzz");
 			player.commit();
 			hotbutton.isLocked = true;
 		}
@@ -469,9 +501,15 @@ public class hotbutton
 				client.register(selector, SelectionKey.OP_READ, player);
 				Log.d("processEvents", "Accepted connection from " + client);
 				
-				// update client status
-				player.send((isLocked) ? "locked" : "unlock");
-				player.commit();
+				// no login while server is unlocked
+				if(!hotbutton.isLocked) {
+					player.send("error");
+					player.send("you can't join an active round!");
+					player.commit();
+				}
+				
+				client.close();
+				key.cancel();
 			}
 			
 			// message from client
