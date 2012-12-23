@@ -458,6 +458,8 @@ public class hotbutton
 						other.send("buzz");
 						other.send(other.equals(player) ? "winner" : "looser");
 						other.commit();
+						
+						Log.d("processCommand", player.getUsername() + " is a " + (other.equals(player) ? "winner" : "looser"));
 					} catch(IOException ex) {
 						Log.d("setLock", ex.toString());
 					}
