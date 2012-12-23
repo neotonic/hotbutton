@@ -27,22 +27,7 @@ import android.widget.Toast;
 public class ButtonActivity extends Activity {
 	
 	
-	@Override
-	protected void onPause() {
-		// TODO Auto-generated method stub
-		try {
-			MainActivity.socket.shutdownInput();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		super.onPause();
-	}
-	@Override
-	protected void onStop() {
-		// TODO Auto-generated method stub
-		super.onStop();
-	}
+
 	Boolean loggedIn = true;
 	
 	clientGame listener;
