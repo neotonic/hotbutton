@@ -32,17 +32,17 @@ public class MainActivity extends Activity {
 	
 	Boolean loggedIn = false;
 	//Socket client;
-	clientLoginAndPlay listener;
+	clientLogin listener;
 	public static Socket socket;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
     	 
-    	
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        TextView textViewName = (TextView) findViewById(R.id.textViewName);
+        
+        // disable widgets
         final EditText editTextName = (EditText) findViewById(R.id.editTextName);
         Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
         Button buttonConnect = (Button) findViewById(R.id.buttonConnect);
@@ -60,22 +60,20 @@ public class MainActivity extends Activity {
 			
 			@Override
 			public void onClick(View v) {
+				
 				new clientConnect().execute(editTextAddress.getText().toString(),
 											editTextPort.getText().toString());
-				
 			}
 		});
         
         // login on server
-        
         buttonRegister.setOnClickListener(new OnClickListener() {
 			
 			@Override
 			public void onClick(View v) {
 				
-				listener = new clientLoginAndPlay();
+				listener = new clientLogin();
 				listener.execute(editTextName.getText().toString());
-				
 			}
 		});
         
@@ -88,14 +86,9 @@ public class MainActivity extends Activity {
 			public void onClick(View v) {
 				
 				android.os.Process.killProcess(android.os.Process.myPid());
-				
 			}
 		});
     }
-    
-    
-    
-    
     
     public class clientConnect extends AsyncTask<String, String, String> {
     	
@@ -126,19 +119,11 @@ public class MainActivity extends Activity {
 				Log.d("SOCKET", "Connect to: " + address + ":" + port);
 				
 				MainActivity.socket = new Socket();
-				
 				MainActivity.socket.connect(new InetSocketAddress(address, port), 1000);
 
 				MainActivity.socket.setSoTimeout(1000);
 				
-				PrintWriter out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
-				
-				Log.d("SOCKET", "Maybe connected to: " + address + ":" + port);
-				
-				// say hi to server
-				out.println("hi");
-				
-				
+								
 			} catch(UnknownHostException e) {
          		Log.d("Exception", "Unknown host: " + address);
 
@@ -185,18 +170,18 @@ public class MainActivity extends Activity {
     }
     
     
-    public class clientLoginAndPlay extends AsyncTask<String, String, String> {
+    public class clientLogin extends AsyncTask<String, String, String> {
     	
     	PrintWriter out;
     	BufferedReader in;
     	
     	
-    	public Boolean listening = false;
+    	public Boolean listen = false;
     	
     	protected String doInBackground(String... params) {
 			
     		
-    		listening = true;
+    		listen = true;
     		
 			try {
 				
@@ -206,23 +191,23 @@ public class MainActivity extends Activity {
 	    		
 				
 				if(!loggedIn) {
+					
 					// send loginname to server
 					String name = params[0];
 					
 					Log.d("CLIENT", "Try login as: " + name);
 					out.println("login-" + name);
 				}
+
 				
 				
-				
-				while(listening)
+				// start listen server
+				while(listen)
 				{
-					
 					try {
 					
 						String line = in.readLine();
 						
-						// debug
 						Log.d("SERVER SAYS", line);
 						
 						publishProgress(line);
@@ -230,10 +215,13 @@ public class MainActivity extends Activity {
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						//e.printStackTrace();
+					} catch (Exception e) {
+
+						android.os.Process.killProcess(android.os.Process.myPid());
 					}
 				}
 				
-				Log.d("clientLoginAndPlay", "Stop listening");
+				Log.d("clientLoginAndPlay", "Stop listen");
 				
 				
 			} catch (IOException e) {
@@ -251,7 +239,6 @@ public class MainActivity extends Activity {
 			TextView textViewName = (TextView) findViewById(R.id.textViewName);
 			EditText editTextName = (EditText) findViewById(R.id.editTextName);
 			Button buttonRegister = (Button) findViewById(R.id.buttonRegister);
-			
 			
         	
         	if(status[0].startsWith("login-fail") || status[0].equals("kick"))
@@ -273,8 +260,7 @@ public class MainActivity extends Activity {
         		editTextName.setEnabled(false);
         		buttonRegister.setEnabled(false);
         		
-        		listening = false;
-        		
+        		listen = false;
         		loggedIn = true;
         		
         		startActivity(new Intent(MainActivity.this, ButtonActivity.class));
@@ -307,7 +293,7 @@ public class MainActivity extends Activity {
 		}
 		protected void onPostExecute (String arg) {
 			
-			listener = new clientLoginAndPlay();
+			listener = new clientLogin();
 			listener.execute(((EditText)findViewById(R.id.editTextName)).getText().toString());
 		}
     }

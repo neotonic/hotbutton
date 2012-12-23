@@ -6,7 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
 import com.example.hotbutton.MainActivity.clientBuzz;
-import com.example.hotbutton.MainActivity.clientLoginAndPlay;
+import com.example.hotbutton.MainActivity.clientLogin;
 import com.example.hotbutton.R.drawable;
 
 import android.app.Activity;
@@ -26,10 +26,21 @@ import android.widget.Toast;
 
 public class ButtonActivity extends Activity {
 	
-	Boolean loggedIn = true;
-	//Socket client;
-	clientLoginAndPlay listener;
 	
+	@Override
+	protected void onPause() {
+		// TODO Auto-generated method stub
+		listener.listening = false;
+		super.onPause();
+	}
+	@Override
+	protected void onStop() {
+		// TODO Auto-generated method stub
+		super.onStop();
+	}
+	Boolean loggedIn = true;
+	
+	clientGame listener;
 	
 	/** Called when the activity is first created. */
     @Override
@@ -38,13 +49,11 @@ public class ButtonActivity extends Activity {
         setContentView(R.layout.activity_button);
         
         
-        final clientLoginAndPlay listener = new clientLoginAndPlay();
-        listener.execute("listening");
+        final clientGame listener = new clientGame();
+        listener.execute();
         
         ImageView imageViewButton = (ImageView) findViewById(R.id.imageViewButton);
         imageViewButton.setEnabled(false);
-        
-        
         
         // buzz
         imageViewButton.setOnClickListener(new OnClickListener() {
@@ -52,8 +61,7 @@ public class ButtonActivity extends Activity {
             public void onClick(View v) {
             	
             	Toast.makeText(v.getContext(), "buzz", Toast.LENGTH_SHORT).show();
-      
-            	listener.listening = false;
+            	listener.setListing(false);
             	new clientBuzz().execute();
             	
             }
@@ -61,18 +69,20 @@ public class ButtonActivity extends Activity {
        
     }
     
- public class clientLoginAndPlay extends AsyncTask<String, String, String> {
+    
+ public class clientGame extends AsyncTask<String, String, String> {
     	
     	PrintWriter out;
     	BufferedReader in;
     	
-      
-    	
-    	
     	public Boolean listening = false;
     	
+		void setListing(Boolean listening) {
+		    		
+    		this.listening = listening;
+    	}
+    	
     	protected String doInBackground(String... params) {
-			
     		
     		listening = true;
     		
@@ -80,26 +90,14 @@ public class ButtonActivity extends Activity {
 				
 				out = new PrintWriter(MainActivity.socket.getOutputStream(),true);
 				in = new BufferedReader(new InputStreamReader(MainActivity.socket.getInputStream()));
-	    		
-				
-				if(!loggedIn) {
-					// send loginname to server
-					String name = params[0];
-					
-					Log.d("CLIENT", "Try login as: " + name);
-					out.println("login-" + name);
-				}
-				
-				
+
 				
 				while(listening)
 				{
-					
 					try {
 					
 						String line = in.readLine();
 						
-						// debug
 						Log.d("SERVER SAYS", line);
 						
 						publishProgress(line);
@@ -107,6 +105,9 @@ public class ButtonActivity extends Activity {
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						//e.printStackTrace();
+					} catch (Exception e) {
+
+						android.os.Process.killProcess(android.os.Process.myPid());
 					}
 				}
 				
@@ -205,7 +206,7 @@ public class ButtonActivity extends Activity {
 		}
 		protected void onPostExecute (String arg) {
 			
-			listener = new clientLoginAndPlay();
+			listener = new clientGame();
 			listener.execute("listening");
 		}
     }
