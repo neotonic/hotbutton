@@ -501,15 +501,14 @@ public class hotbutton
 				client.register(selector, SelectionKey.OP_READ, player);
 				Log.d("processEvents", "Accepted connection from " + client);
 				
-				// no login while server is unlocked
-				if(!hotbutton.isLocked) {
+				// login is not possible while the button is locked
+				if(hotbutton.isLocked) {
 					player.send("error");
 					player.send("you can't join an active round!");
 					player.commit();
+					client.close();
+					continue;
 				}
-				
-				client.close();
-				key.cancel();
 			}
 			
 			// message from client
